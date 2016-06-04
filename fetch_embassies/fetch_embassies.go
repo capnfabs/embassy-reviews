@@ -1,5 +1,9 @@
-// Suggested Usage:
-// go install ./fetch_embassies && PLACES_API_KEY=`cat places_api_key.txt` fetch_embassies
+/*
+Suggested usage:
+
+go install ./fetch_embassies && echo "-35.3018436,149.1241899" | \
+PLACES_API_KEY=`cat places_api_key.txt` fetch_embassies
+*/
 
 package main
 
