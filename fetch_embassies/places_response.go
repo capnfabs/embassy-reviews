@@ -3,6 +3,7 @@ package main
 type placesResponse struct {
 	PageToken string  `json:"next_page_token"`
 	Results   []place `json:"results"`
+	Status    string  `json:"status"`
 }
 
 type place struct {

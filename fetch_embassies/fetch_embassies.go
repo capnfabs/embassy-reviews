@@ -13,15 +13,16 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Given LatLngs, fetches Places API place_ids for embassies in 50km radius around those LatLngs.
 func main() {
-
 	apiKey := os.Getenv(`PLACES_API_KEY`)
 	if apiKey == "" {
 		panic("Requires a valid places API key")
 	}
+	var embassies []place
 	sc := bufio.NewScanner(os.Stdin)
 	for sc.Scan() {
 		if sc.Err() != nil {
@@ -33,7 +34,32 @@ func main() {
 		}
 		lat := mustFloat32(vals[0])
 		lng := mustFloat32(vals[1])
-		fetchEmbassiesNearLatLng(apiKey, "", lat, lng)
+		page := ""
+		count := 0
+		for {
+			// Do a cheeky sleep to prevent pages not being ready yet.
+			if page != "" {
+				time.Sleep(3 * time.Second)
+			}
+			resp, err := fetchEmbassiesNearLatLng(apiKey, page, lat, lng)
+			if err != nil {
+				log.Println(err)
+			}
+			if !(resp.Status == "OK" || resp.Status == "ZERO_RESULTS") {
+				log.Println(resp.Status)
+			}
+			count += len(resp.Results)
+			for _, r := range resp.Results {
+				fmt.Println(r.PlaceID)
+			}
+			// TODO: convert to map on place ID.
+			embassies = append(embassies, resp.Results...)
+			page = resp.PageToken
+			if page == "" {
+				break
+			}
+		}
+		log.Printf("Obtained %d results from %f,%f\n", count, lat, lng)
 	}
 }
 
@@ -45,7 +71,7 @@ func mustFloat32(str string) float32 {
 	return float32(x)
 }
 
-func fetchEmbassiesNearLatLng(apiKey string, pageToken string, lat, lng float32) []string {
+func fetchEmbassiesNearLatLng(apiKey string, pageToken string, lat, lng float32) (placesResponse, error) {
 	url, err := url.Parse(`https://maps.googleapis.com/maps/api/place/nearbysearch/json`)
 	if err != nil {
 		panic(err)
@@ -61,7 +87,7 @@ func fetchEmbassiesNearLatLng(apiKey string, pageToken string, lat, lng float32)
 		q.Set(`type`, `embassy`)
 	}
 	url.RawQuery = q.Encode()
-	fmt.Println(url.String())
+	//log.Println(url.String())
 	res, err := http.Get(url.String())
 	if err != nil {
 		log.Fatal(err)
@@ -70,10 +96,5 @@ func fetchEmbassiesNearLatLng(apiKey string, pageToken string, lat, lng float32)
 	var resp placesResponse
 	dec := json.NewDecoder(res.Body)
 	err = dec.Decode(&resp)
-	if err != nil {
-		log.Println(err)
-	}
-	fmt.Println(resp)
-	var ret []string
-	return ret
+	return resp, err
 }
