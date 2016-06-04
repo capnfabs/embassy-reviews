@@ -5,8 +5,8 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -67,11 +67,13 @@ func fetchEmbassiesNearLatLng(apiKey string, pageToken string, lat, lng float32)
 		log.Fatal(err)
 	}
 	defer res.Body.Close()
-	content, err := ioutil.ReadAll(res.Body)
+	var resp placesResponse
+	dec := json.NewDecoder(res.Body)
+	err = dec.Decode(&resp)
 	if err != nil {
 		log.Println(err)
 	}
-	fmt.Println(string(content))
+	fmt.Println(resp)
 	var ret []string
 	return ret
 }
