@@ -176,6 +176,7 @@ func main() {
 			continue
 		}
 		log.Printf("%s %s: %f,%f\n", c.country, c.city, l.lat, l.lng)
+		fmt.Printf("%f,%f", l.lat, l.lng)
 		found++
 	}
 	log.Printf("Found: %d Missed %d\n", found, missed)
