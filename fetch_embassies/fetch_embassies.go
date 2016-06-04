@@ -4,12 +4,15 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 )
 
 // Given LatLngs, fetches Places API place_ids for embassies in 50km radius around those LatLngs.
@@ -19,7 +22,27 @@ func main() {
 	if apiKey == "" {
 		panic("Requires a valid places API key")
 	}
-	fetchEmbassiesNearLatLng(apiKey, "", -35.283459, 149.128067)
+	sc := bufio.NewScanner(os.Stdin)
+	for sc.Scan() {
+		if sc.Err() != nil {
+			panic(sc.Err())
+		}
+		vals := strings.Split(sc.Text(), ",")
+		if len(vals) != 2 {
+			panic("Expected a pair of coords")
+		}
+		lat := mustFloat32(vals[0])
+		lng := mustFloat32(vals[1])
+		fetchEmbassiesNearLatLng(apiKey, "", lat, lng)
+	}
+}
+
+func mustFloat32(str string) float32 {
+	x, err := strconv.ParseFloat(strings.TrimSpace(str), 32)
+	if err != nil {
+		panic(err)
+	}
+	return float32(x)
 }
 
 func fetchEmbassiesNearLatLng(apiKey string, pageToken string, lat, lng float32) []string {
