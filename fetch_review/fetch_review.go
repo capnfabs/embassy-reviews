@@ -10,14 +10,21 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
+	"time"
 )
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+	flagAll := flag.Bool("all", false, "Include all reviews for all input places")
+	flag.Parse()
 	apiKey := os.Getenv(`PLACES_API_KEY`)
 	if apiKey == "" {
 		panic("Requires a valid places API key")
@@ -27,12 +34,45 @@ func main() {
 		if sc.Err() != nil {
 			panic(sc.Err())
 		}
-		reviewResponse, err := fetchReviewsForPlace(apiKey, sc.Text())
+		place := sc.Text()
+		reviewResponse, err := fetchReviewsForPlace(apiKey, place)
 		if err != nil {
-			log.Print(err)
+			panic(err)
 		}
-		fmt.Println(reviewResponse)
+		if reviewResponse.Status != "OK" {
+			panic(fmt.Errorf("Bad response from Places API: %s", reviewResponse.Status))
+		}
+		for _, r := range shuffle(filter(reviewResponse.Result.Reviews)) {
+			txt := fmt.Sprintf(
+				"%s %s",
+				strings.Repeat("★", r.Rating),
+				strings.TrimSpace(r.Text))
+			fmt.Println(txt)
+			if !*flagAll {
+				return
+			}
+		}
 	}
+}
+
+// Skips non-english reviews, and reviews without text.
+func filter(rs []review) []review {
+	var out []review
+	for _, r := range rs {
+		if r.Language == "en" && r.Text != "" {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func shuffle(rs []review) []review {
+	dest := make([]review, len(rs))
+	perm := rand.Perm(len(rs))
+	for i, v := range perm {
+		dest[v] = rs[i]
+	}
+	return dest
 }
 
 func fetchReviewsForPlace(apiKey, placeID string) (reviewResponse, error) {
@@ -45,7 +85,7 @@ func fetchReviewsForPlace(apiKey, placeID string) (reviewResponse, error) {
 	q.Set(`placeid`, placeID)
 	q.Set(`language`, `en`)
 	url.RawQuery = q.Encode()
-	log.Println(url.String())
+	//log.Println(url.String())
 	res, err := http.Get(url.String())
 	if err != nil {
 		log.Fatal(err)
