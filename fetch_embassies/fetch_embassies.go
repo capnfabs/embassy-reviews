@@ -21,6 +21,7 @@ import (
 )
 
 // Given LatLngs, fetches Places API place_ids for embassies in 50km radius around those LatLngs.
+// May include duplicates - you should filter these out yourself.
 func main() {
 	apiKey := os.Getenv(`PLACES_API_KEY`)
 	if apiKey == "" {
@@ -56,7 +57,6 @@ func main() {
 			for _, r := range resp.Results {
 				fmt.Println(r.PlaceID)
 			}
-			// TODO: convert to map on place ID.
 			embassies = append(embassies, resp.Results...)
 			page = resp.PageToken
 			if page == "" {
