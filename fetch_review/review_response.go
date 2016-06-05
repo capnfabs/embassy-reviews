@@ -9,6 +9,7 @@ type result struct {
 	Reviews []review `json:"reviews"`
 	// Just to check that it works
 	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 type review struct {

@@ -44,9 +44,10 @@ func main() {
 		}
 		for _, r := range shuffle(filter(reviewResponse.Result.Reviews)) {
 			txt := fmt.Sprintf(
-				"%s %s",
+				"%s %s - %s",
 				strings.Repeat("★", r.Rating),
-				strings.TrimSpace(r.Text))
+				strings.TrimSpace(r.Text),
+				reviewResponse.Result.URL)
 			fmt.Println(txt)
 			if !*flagAll {
 				return

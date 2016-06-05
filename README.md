@@ -4,6 +4,7 @@ People review the darndest things.
 
 ## Get started
 - Grab a key for the [Google Places API](https://developers.google.com/places/web-service/), and put it in `places_api_key.txt`
+- Probably add a credit card to the project if you're doing development - the daily limits get exhausted quickly if you're fetching lots of reviews.
 
 
 ## What's in the repo?
