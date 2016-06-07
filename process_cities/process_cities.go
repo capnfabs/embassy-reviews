@@ -66,14 +66,15 @@ type latLng struct {
 }
 
 type city struct {
-	country string
-	city    string
+	country    string
+	city       string
+	population int
 }
 
 // Double quotes are used extensively in the set, including at the start of fields, but they're
 // never used to wrap a field. We could roll our own, more general, CSV parser, or we could
 // just replace characters on the fly. We're going to go with a custom parser because everything's
-// pretty well formatted.
+// pretty consistently formatted.
 func parseGeonamesFile(ioreader io.Reader) [][]string {
 	s := bufio.NewScanner(ioreader)
 	var records [][]string
@@ -100,6 +101,21 @@ func parseGeonamesFile(ioreader io.Reader) [][]string {
 		panic(err)
 	}
 	return records
+}
+
+func loadCitiesWithPopOver500k(ioreader io.Reader) []city {
+	records := parseGeonamesFile(ioreader)
+	var x []city
+	for _, rec := range records {
+		f := mapSlices(geonameFields, rec)
+		if mustInt(f[`population`]) > 500000 {
+			x = append(x, city{
+				country: f[`country_code`],
+				city:    f[`asciiname`],
+			})
+		}
+	}
+	return x
 }
 
 func loadCityLatLngs(ioreader io.Reader) map[city]latLng {
@@ -145,6 +161,14 @@ func mustFloat32(str string) float32 {
 	return float32(x)
 }
 
+func mustInt(str string) int {
+	x, err := strconv.Atoi(str)
+	if err != nil {
+		panic(err)
+	}
+	return x
+}
+
 func mapSlices(names, values []string) map[string]string {
 	if len(names) != len(values) {
 		panic(fmt.Sprintf("Expected both inputs to have same length, got len(names)=%d len(values)=%d", len(names), len(values)))
@@ -165,6 +189,14 @@ func main() {
 	cityLatLngs := loadCityLatLngs(r)
 	log.Printf("Loaded %d cities w/ coordinates\n", len(cityLatLngs))
 
+	r, err = os.Open("data/cities15000.txt")
+	if err != nil {
+		panic(err)
+	}
+	defer r.Close()
+	largeCities := loadCitiesWithPopOver500k(r)
+	log.Printf("Loaded %d cities w/ pop over 500k\n", len(largeCities))
+
 	r, err = os.Open("data/countryInfo.txt")
 	if err != nil {
 		panic(err)
@@ -174,7 +206,17 @@ func main() {
 	log.Printf("Loaded %d capital cities", len(capitals))
 	found := 0
 	missed := 0
+
+	// Combine the two sets. We only want unique values so put them in a map.
+	cities := make(map[city]struct{})
 	for _, c := range capitals {
+		cities[c] = struct{}{}
+	}
+	for _, c := range largeCities {
+		cities[c] = struct{}{}
+	}
+
+	for c := range cities {
 		l, ok := cityLatLngs[c]
 		if !ok {
 			log.Printf("Couldn't find %v\n", c)
