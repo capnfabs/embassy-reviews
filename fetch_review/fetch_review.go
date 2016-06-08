@@ -74,6 +74,10 @@ input:
 		for _, r := range shuffle(filter(reviewResponse.Result.Reviews)) {
 			// Choose 140 - 30 (for reviews *, links, hyphens, spaces.)
 			reviewText := limitChooseSentence(r.Text, 110)
+			if reviewText == "" {
+				// Skip reviews that are empty once cleaned or shortened.
+				continue
+			}
 			txt := fmt.Sprintf(
 				"%s %s - %s",
 				strings.Repeat("★", r.Rating),
@@ -88,6 +92,7 @@ input:
 	}
 	log.Print("Finishing! Made it all the way to ", lastPlace)
 	if len(reviewList) > 0 {
+		// TODO: I don't think this works?
 		shuffleStrings(reviewList)
 		if err := outputToJSON(reviewList); err != nil {
 			panic(err)
@@ -131,7 +136,7 @@ func shuffleStrings(in []string) []string {
 
 func limitChooseSentence(text string, maxlength int) string {
 	if len(text) < maxlength {
-		return text
+		return strings.TrimSpace(text)
 	}
 	sentences := removeEmpty(strings.Split(text, "."))
 	order := rand.Perm(len(sentences))
