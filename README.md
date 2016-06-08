@@ -16,3 +16,5 @@ I've designed this so you should be able to precompute a list of embassies, and 
 - `./process_cities` - processes the data in `/data`, outputs a list of potentially interesting (lat,lng) pairs to use as inputs to the places API. Initially, this is just based on the capital city of each country.
 - `./fetch_embassies` - Reads (lat,lng) pairs from the stdin and Fetches as many embassies within 50km of each of these as the Places API will allow. Outputs the Places API placeid for each of these. Note that this might return duplicates, you might want to pipe the output through `| sort | uniq`.
 - `./fetch_review` - Takes a list of Place IDs and fetches reviews for all of them.
+- `./tweeter/` - A python thingy that tweets random entries from the included json file.
+  - `./build_lambda.sh` - builds a zip file that can be uploaded to AWS lambda for periodic tweets 💪
