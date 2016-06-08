@@ -1,5 +1,7 @@
 # Embassy Reviews!
 
+> ★★★ The worst part? You don't have an option whether you like it or not - https://maps.google.com/?cid=15088333349668026791
+
 People review the darndest things.
 
 ## Get started
