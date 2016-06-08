@@ -9,3 +9,7 @@ cat out/embassies.txt | sort | uniq >out/embassies_unique.txt
 gshuf out/embassies_unique.txt >out/embassies_unique_shuffled.txt
 # Don't worry, we also print reviews to Stdout.
  cat out/embassies_unique_shuffled.txt | PLACES_API_KEY=`cat places_api_key.txt` fetch_review --all >out/reviews.txt
+
+# If you want to manually curate, install 'jq' and then
+jq . <out/reviews.json >out/reviews_formatted.json
+mv out/reviews_formatted.json out/reviews.json
