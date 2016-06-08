@@ -78,8 +78,9 @@ input:
 				// Skip reviews that are empty once cleaned or shortened.
 				continue
 			}
+
 			txt := fmt.Sprintf(
-				"%s %s - %s",
+				"%s %s %s",
 				strings.Repeat("★", r.Rating),
 				reviewText,
 				reviewResponse.Result.URL)
