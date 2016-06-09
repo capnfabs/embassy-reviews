@@ -10,25 +10,19 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"flag"
-	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
-	"sort"
-	"strings"
 	"syscall"
 	"time"
+
+	"github.com/capnfabs/embassyreviews/reviews"
 )
 
 func main() {
-	var reviewList []string
-	rand.Seed(time.Now().UnixNano())
-	flagAll := flag.Bool("all", false, "Include all reviews for all input places")
-	flag.Parse()
+	var placesList = make([]reviews.PlaceDetails, 0)
 	apiKey := os.Getenv(`PLACES_API_KEY`)
 	if apiKey == "" {
 		panic("Requires a valid places API key")
@@ -49,16 +43,19 @@ input:
 		// Check that we haven't been interrupted
 		select {
 		case <-sigInt:
-			log.Println("Got sigint, shutting down")
+			log.Println("Got SIGINT, shutting down")
 			break input
 		default:
 		}
 
 		place := sc.Text()
 		reviewResponse, err := fetchReviewsForPlace(apiKey, place)
+
 		if err != nil {
 			log.Print(err)
-			time.Sleep(time.Second)
+			// Hope that network errors go away after 5 seconds
+			time.Sleep(5 * time.Second)
+			// 10 network failures in a row before giving up.
 			errCount++
 			if errCount > 10 {
 				break input
@@ -66,38 +63,19 @@ input:
 			continue
 		}
 		errCount = 0
+
 		if reviewResponse.Status != "OK" {
 			log.Printf("Bad response from Places API: %s", reviewResponse.Status)
 			break input
 		}
-		lastPlace = place
-		for _, r := range shuffle(filter(reviewResponse.Result.Reviews)) {
-			// Choose 140 - 30 (for reviews *, links, hyphens, spaces.)
-			reviewText := limitChooseSentence(r.Text, 110)
-			if reviewText == "" {
-				// Skip reviews that are empty once cleaned or shortened.
-				continue
-			}
 
-			txt := fmt.Sprintf(
-				"%s %s %s",
-				strings.Repeat("★", r.Rating),
-				reviewText,
-				reviewResponse.Result.URL)
-			log.Println(txt)
-			reviewList = append(reviewList, txt)
-			if !*flagAll {
-				break input
-			}
-		}
+		lastPlace = place
+		log.Printf("Fetched details for %s", lastPlace)
+		placesList = append(placesList, reviewResponse.Result)
 	}
 	log.Print("Finishing! Made it all the way to ", lastPlace)
-	if len(reviewList) > 0 {
-		// TODO: I don't think this works?
-		shuffleStrings(reviewList)
-		if err := outputToJSON(reviewList); err != nil {
-			panic(err)
-		}
+	if err := outputToJSON(placesList); err != nil {
+		panic(err)
 	}
 }
 
@@ -106,84 +84,7 @@ func outputToJSON(val interface{}) error {
 	return enc.Encode(val)
 }
 
-// Skips non-english reviews, and reviews without text.
-func filter(rs []review) []review {
-	var out []review
-	for _, r := range rs {
-		if r.Language == "en" && r.Text != "" {
-			out = append(out, r)
-		}
-	}
-	return out
-}
-
-func shuffle(rs []review) []review {
-	dest := make([]review, len(rs))
-	perm := rand.Perm(len(rs))
-	for i, v := range perm {
-		dest[v] = rs[i]
-	}
-	return dest
-}
-
-func shuffleStrings(in []string) []string {
-	dest := make([]string, len(in))
-	perm := rand.Perm(len(in))
-	for i, v := range perm {
-		dest[v] = in[i]
-	}
-	return dest
-}
-
-func limitChooseSentence(text string, maxlength int) string {
-	if len(text) < maxlength {
-		return strings.TrimSpace(text)
-	}
-	sentences := removeEmpty(strings.Split(text, "."))
-	order := rand.Perm(len(sentences))
-	var chosen []int
-	sum := 0
-	for _, idx := range order {
-		// +1 for the full stop + space.
-		lenItem := len(sentences[idx]) + 2
-		if sum+lenItem <= maxlength {
-			chosen = append(chosen, idx)
-			sum += lenItem
-		}
-	}
-	// Sort the sentences again to put them in the right order
-	sort.Ints(chosen)
-	retVal := ""
-	// chosen so that it won't be triggered first time
-	last := -5
-	for _, idx := range chosen {
-		if last == -5 {
-			// first time, just append as is
-			retVal += sentences[idx]
-		} else if last == idx-1 {
-			// Strings are right next to each other! Don't try to put a …
-			retVal += ". " + sentences[idx]
-		} else {
-			// There's a gap! Praise the Codepoints in heaven above for the fact that an ellipsis is one
-			// character.
-			retVal += "… " + sentences[idx]
-		}
-		last = idx
-	}
-	return retVal
-}
-
-func removeEmpty(in []string) []string {
-	var out []string
-	for _, val := range in {
-		if val != "" {
-			out = append(out, strings.TrimSpace(val))
-		}
-	}
-	return out
-}
-
-func fetchReviewsForPlace(apiKey, placeID string) (reviewResponse, error) {
+func fetchReviewsForPlace(apiKey, placeID string) (reviews.ReviewResponse, error) {
 	url, err := url.Parse(`https://maps.googleapis.com/maps/api/place/details/json`)
 	if err != nil {
 		panic(err)
@@ -199,7 +100,7 @@ func fetchReviewsForPlace(apiKey, placeID string) (reviewResponse, error) {
 		log.Fatal(err)
 	}
 	defer res.Body.Close()
-	var resp reviewResponse
+	var resp reviews.ReviewResponse
 	dec := json.NewDecoder(res.Body)
 	err = dec.Decode(&resp)
 	return resp, err
