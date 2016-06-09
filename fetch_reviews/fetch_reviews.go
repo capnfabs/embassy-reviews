@@ -34,17 +34,16 @@ func main() {
 	sc := bufio.NewScanner(os.Stdin)
 	lastPlace := ""
 	errCount := 0
-input:
 	for sc.Scan() {
 		if sc.Err() != nil {
 			log.Print(sc.Err())
-			break input
+			break
 		}
 		// Check that we haven't been interrupted
 		select {
 		case <-sigInt:
 			log.Println("Got SIGINT, shutting down")
-			break input
+			break
 		default:
 		}
 
@@ -58,7 +57,7 @@ input:
 			// 10 network failures in a row before giving up.
 			errCount++
 			if errCount > 10 {
-				break input
+				break
 			}
 			continue
 		}
@@ -66,7 +65,7 @@ input:
 
 		if reviewResponse.Status != "OK" {
 			log.Printf("Bad response from Places API: %s", reviewResponse.Status)
-			break input
+			continue
 		}
 
 		lastPlace = place
