@@ -18,3 +18,9 @@ stdout from running
 ```sh
 go install ./fetch_embassies && echo "-35.3018436,149.1241899" | PLACES_API_KEY=`cat places_api_key.txt` fetch_embassies
 ```
+
+## en_sent.bin
+
+Comes from OpenNLP. http://opennlp.sourceforge.net/models-1.5/
+Sentence detection model. It's ok that it's for version 1.5 - they're fully compatible.
+See http://opennlp.apache.org/download.html

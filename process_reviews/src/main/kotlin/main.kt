@@ -1,6 +1,11 @@
 import com.google.gson.Gson;
+import opennlp.tools.sentdetect.SentenceDetectorME
+import opennlp.tools.sentdetect.SentenceModel
+import java.io.FileInputStream
 import java.io.FileReader
 import java.util.*
+
+val sentenceDetector = sentenceDetector()
 
 fun main(args : Array<String>) {
     val reader = FileReader("../out/reviews_raw.json")
@@ -24,12 +29,21 @@ fun formatReviews(reviews: List<Review>, placeUrl: String): List<String> {
     for (review in reviews) {
         ret.add(formatReview(review, placeUrl))
     }
-    println(ret)
     return ret;
 }
 
+const val MAX_REVIEW_TEXT_LENGTH:Int = 110
+
 fun formatReview(review: Review, placeUrl: String): String {
     val text = review.text;
+    if (text.length > MAX_REVIEW_TEXT_LENGTH) {
+        val sentences = sentenceDetector.sentDetect(text);
+        println("---")
+        for (sentence in sentences) {
+            println(sentence)
+        }
+        println("/---")
+    }
     return """${"★".repeat(review.rating)} $text $placeUrl"""
 }
 
@@ -47,6 +61,13 @@ fun filterReviews(reviews: Array<Review>): List<Review> {
 fun reviewIsUsable(review: Review): Boolean {
     return review.language == "en"
         && review.text.trim() != ""
+}
+
+fun sentenceDetector(): SentenceDetectorME {
+    FileInputStream("../data/en-sent.bin").use {
+        val model = SentenceModel(it)
+        return SentenceDetectorME(model)
+    }
 }
 
 data class PlaceDetails(val reviews: Array<Review>?, val name: String, val url: String)
