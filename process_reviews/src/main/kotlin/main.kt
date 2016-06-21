@@ -1,4 +1,4 @@
-import com.google.gson.Gson;
+import com.google.gson.Gson
 import opennlp.tools.sentdetect.SentenceDetectorME
 import opennlp.tools.sentdetect.SentenceModel
 import java.io.FileInputStream
@@ -27,24 +27,96 @@ fun main(args : Array<String>) {
 fun formatReviews(reviews: List<Review>, placeUrl: String): List<String> {
     val ret = ArrayList<String>();
     for (review in reviews) {
-        ret.add(formatReview(review, placeUrl))
+        // TODO: Just truncate at the last possible word boundary instead of continuing.
+        val formatted = formatReview(review, placeUrl) ?: continue
+        ret.add(formatted)
     }
     return ret;
 }
 
 const val MAX_REVIEW_TEXT_LENGTH:Int = 110
 
-fun formatReview(review: Review, placeUrl: String): String {
-    val text = review.text;
+fun formatReview(review: Review, placeUrl: String): String? {
+    var text:String = review.text;
     if (text.length > MAX_REVIEW_TEXT_LENGTH) {
-        val sentences = sentenceDetector.sentDetect(text);
-        println("---")
-        for (sentence in sentences) {
-            println(sentence)
-        }
-        println("/---")
+        val shortened = shortenReviewText(text) ?: return null
+        text = shortened
     }
+    println("""${"★".repeat(review.rating)} $text $placeUrl""")
     return """${"★".repeat(review.rating)} $text $placeUrl"""
+}
+/*
+Logic for review formatting.
+
+1. Detect and shuffle sentences.
+2. Add them sequentially to stay under the limit. For each sentence
+    - Generate result from adding sentence
+    - Check that it's under the limit.
+    - Otherwise, revert.
+Joining logic:
+    - If this is the first sentence, just add the sentence. Done.
+    - Sort the indices of all sentences. Add the first sentence. For each extra sentence:
+        - Check if the last sentence ends with a full stop. If it does, change that to a "... ".
+        - Otherwise, add a "... "
+        - Add the sentence.
+*/
+fun shortenReviewText(review: String): String? {
+    val sentences = sentenceDetector.sentDetect(review)
+    // shuffle indices
+    val indices = listFromTo(0, sentences.size)
+    Collections.shuffle(indices)
+    var chosen = ArrayList<Int>()
+    var currentReviewText:String? = null;
+
+    // Choose these indices until the total is MAX_REVIEW_TEXT_LENGTH chars.
+    for (idx in indices) {
+        val tryChosen = ArrayList(chosen)
+        tryChosen.add(idx)
+        val spliced = spliceReview(sentences, tryChosen)
+        if (spliced.length == MAX_REVIEW_TEXT_LENGTH) {
+            return spliced
+        }
+        if (spliced.length < MAX_REVIEW_TEXT_LENGTH) {
+            chosen = tryChosen
+            currentReviewText = spliced
+        }
+    }
+    return currentReviewText
+}
+
+fun spliceReview(sentences: Array<String>, chosenSentences: List<Int>): String {
+    // Sort the list of chosen indexes, because if there's two in a row, we'll join them using
+    // a full stop instead of the ellipsis.
+    val chosen = ArrayList(chosenSentences);
+    Collections.sort(chosen)
+    var lastIdx = -1;
+    var builder = StringBuilder();
+    for (idx in chosen) {
+        val sentence = sentences[idx]
+        when (lastIdx) {
+        // Special case. First time, no joining character.
+            -1 -> builder.append(sentence)
+        // Consecutive sentences
+            idx - 1 -> builder.append(" ").append(sentence)
+        // Non-consecutive sentences.
+            else -> {
+                // If the last sentence ended with a period, remove it, because we're about to add
+                // an ellipsis. Do this in a loop because some people add multiple periods.
+                builder = StringBuilder(builder.trimEnd('.', ' ', '\t', '\n'));
+                builder.append("… ").append(sentences[idx])
+            }
+        }
+        lastIdx = idx;
+    }
+    return builder.toString()
+}
+
+fun listFromTo(start: Int, end: Int): ArrayList<Int> {
+    val ret = ArrayList<Int>(end-start)
+    for (i in start..(end-1)) {
+        ret.add(i)
+    }
+    return ret
 }
 
 
