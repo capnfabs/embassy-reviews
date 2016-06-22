@@ -11,8 +11,8 @@ val sentenceDetector = sentenceDetector()
 
 fun main(args : Array<String>) {
     val gson = GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
-    val reader = FileReader("../out/reviews_raw.json")
-    val json = gson.fromJson(reader, Array<PlaceDetails>::class.java)
+
+    val json = fetchRawReviews(gson, "../out/reviews_raw.json")
 
     val formattedList = ArrayList<String>()
 
@@ -25,8 +25,16 @@ fun main(args : Array<String>) {
         formattedList.addAll(formatted)
     }
     Collections.shuffle(formattedList)
-    gson.toJson(formattedList, FileWriter("../out/reviews_processed.json"))
+    FileWriter("../out/reviews_processed.json").use {
+        gson.toJson(formattedList, it)
+    }
     print("Done.")
+}
+
+private fun fetchRawReviews(gson: Gson, path: String): Array<PlaceDetails> {
+    FileReader(path).use {
+        return gson.fromJson(it, Array<PlaceDetails>::class.java)
+    }
 }
 
 fun formatReviews(reviews: List<Review>, placeUrl: String): List<String> {
