@@ -10,7 +10,7 @@ import java.util.*
 val sentenceDetector = sentenceDetector()
 
 fun main(args : Array<String>) {
-    val gson = GsonBuilder().setPrettyPrinting().create();
+    val gson = GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     val reader = FileReader("../out/reviews_raw.json")
     val json = gson.fromJson(reader, Array<PlaceDetails>::class.java)
 
